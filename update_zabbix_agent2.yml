@@ -1,0 +1,14 @@
+---
+- name: Update Zabbix Agent 2 para ultima versao
+  hosts: all
+  become: true
+  roles:
+    - role: zabbix.zabbix.agent
+      vars:
+        agent_variant: 2
+        agent_param_server: "192.168.0.235"
+        agent_param_serveractive: "192.168.0.235"
+        agent_package_state: latest
+        agent_apply_firewalld_rule: false
+        agent_param_hostmetadata: "srvlinux"
+        agent_param_hostname: "{{ inventory_hostname }}"

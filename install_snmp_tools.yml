@@ -1,0 +1,26 @@
+---
+- name: Instalar ferramentas SNMP
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Instalar pacotes SNMP (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - snmp
+          - snmp-mibs-downloader
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    - name: Instalar pacotes SNMP (RHEL/CentOS)
+      ansible.builtin.yum:
+        name:
+          - net-snmp-utils
+          - net-snmp
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Exibir resultado
+      ansible.builtin.debug:
+        msg: "Ferramentas SNMP instaladas em {{ inventory_hostname }} ({{ ansible_distribution }})"
