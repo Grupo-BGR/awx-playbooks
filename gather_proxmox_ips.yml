@@ -1,0 +1,47 @@
+---
+- name: Coletar IPs de todas VMs e CTs nos nodes Proxmox
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Listar configs LXC com IPs
+      shell: |
+        for f in /etc/pve/lxc/*.conf; do
+          vmid=$(basename "$f" .conf)
+          hostname=$(grep '^hostname:' "$f" | awk '{print $2}')
+          ip=$(grep '^net0:' "$f" | grep -oP 'ip=\K[^/,]+')
+          echo "$vmid|$hostname|$ip"
+        done
+      register: lxc_info
+      ignore_errors: true
+
+    - name: Mostrar IPs dos containers LXC
+      debug:
+        msg: "{{ lxc_info.stdout_lines }}"
+      when: lxc_info.stdout_lines is defined
+
+    - name: Listar IPs de VMs QEMU via qm
+      shell: |
+        for vmid in $(qm list 2>/dev/null | tail -n +2 | awk '{print $1}'); do
+          name=$(qm config "$vmid" 2>/dev/null | grep '^name:' | awk '{print $2}')
+          ip=$(qm guest cmd "$vmid" network-get-interfaces 2>/dev/null | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        for iface in data:
+            if iface.get('name') not in ('lo', 'Loopback Pseudo-Interface 1'):
+                for addr in iface.get('ip-addresses', []):
+                    if addr.get('ip-address-type') == 'ipv4':
+                        print(addr['ip-address'])
+                        sys.exit(0)
+        print('sem-ip')
+        " 2>/dev/null || echo "sem-guest-agent")
+          echo "$vmid|$name|$ip"
+        done
+      register: qemu_info
+      ignore_errors: true
+
+    - name: Mostrar IPs das VMs QEMU
+      debug:
+        msg: "{{ qemu_info.stdout_lines }}"
+      when: qemu_info.stdout_lines is defined

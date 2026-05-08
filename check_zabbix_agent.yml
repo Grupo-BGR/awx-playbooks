@@ -1,0 +1,25 @@
+---
+- name: Verificar status do Zabbix Agent 2
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Checar se zabbix-agent2 esta instalado
+      shell: dpkg -l zabbix-agent2 2>/dev/null | grep -c '^ii' || rpm -q zabbix-agent2 2>/dev/null | grep -c 'zabbix-agent2' || echo "0"
+      register: zabbix_installed
+      ignore_errors: true
+
+    - name: Checar se zabbix-agent2 esta rodando
+      shell: systemctl is-active zabbix-agent2 2>/dev/null || echo "inactive"
+      register: zabbix_status
+      ignore_errors: true
+
+    - name: Mostrar config do Zabbix Agent
+      shell: cat /etc/zabbix/zabbix_agent2.conf 2>/dev/null | grep -E '^(Server|ServerActive|Hostname|HostMetadata)' || echo "config-nao-encontrado"
+      register: zabbix_config
+      ignore_errors: true
+
+    - name: Resumo do Zabbix Agent
+      debug:
+        msg: "Host={{ inventory_hostname }} | Instalado={{ zabbix_installed.stdout }} | Status={{ zabbix_status.stdout }} | Config={{ zabbix_config.stdout_lines }}"
